@@ -18,6 +18,42 @@ This code aims to fill that gap.
 
 ---
 
+## Installation
+
+### Using CMake
+
+1. **Clone the repository**:
+
+```bash
+git clone https://github.com/yourusername/smart_seq.git
+cd smart_seq
+```
+
+Build and install:
+
+```
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=/your/install/path ..
+cmake --build . --target install
+```
+
+This will install the headers to /your/install/path/include.
+Use with find_package in another CMake project:
+
+```
+find_package(smart_seq REQUIRED)
+target_link_libraries(your_target PRIVATE smart_seq)
+```
+
+Now you can include the library headers in your project:
+
+```cpp
+#include <machinetherapist/smart_seq.h>
+```
+
+---
+
 ### Why ‘Pseudo’?
 
 As pointed out by [u/yuri-kilochek on Reddit](https://www.reddit.com/user/yuri-kilochek), this container is technically a "pseudo-container" for class types. 
@@ -29,9 +65,9 @@ For primitive types, normal container-like behavior is supported, but for class 
 ### TODO
 
 - [ ] Add a proper license (e.g., Apache 2.0 or MIT)
-- [ ] Improve CMake (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
-  - [ ] Add `install()` and `find_package()` support
-  - [ ] Make it easier to include this library in other projects
+- [x] Improve CMake (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
+  - [x] Add `install()` and `find_package()` support
+  - [x] Make it easier to include this library in other projects
 - [ ] Add unit tests using Google Test or Catch2 (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
 - [ ] Optional: Set up a CI/CD pipeline for automatic builds and tests
 - [ ] Improve documentation with examples and usage notes
