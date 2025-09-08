@@ -25,7 +25,7 @@ This code aims to fill that gap.
 1. **Clone the repository**:
 
 ```bash
-git clone https://github.com/yourusername/smart_seq.git
+git clone https://github.com/illegal-instruction-co/smart_seq.git
 cd smart_seq
 ```
 
