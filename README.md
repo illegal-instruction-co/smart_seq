@@ -1,4 +1,4 @@
-# smart_seq - A Smart Sequence Container 🚀
+# smart_seq - A Smart Sequence 'Pseudo' Container 
 
 Hello! This code is a special data structure written in modern C++. It's designed to be **faster than a standard `std::vector`** for many common use cases.
 
@@ -15,6 +15,14 @@ This code aims to fill that gap.
 - **Super Fast for Small Data:** For a few elements, it avoids using the heap entirely, just like a small string optimization. This makes common operations like `push_back` much faster by eliminating memory allocation overhead.
 - **Smart for Large Data:** For more complex data types (like structs), it automatically reorganizes your data into a **Structure of Arrays (SoA)** format. This improves **cache locality**, allowing your CPU to process data much more efficiently and speeding up your program.
 - **Automatic:** You don't need to write complex boilerplate code. Just add your data, and it handles the best memory layout for you.
+
+---
+
+### Why ‘Pseudo’?
+
+As pointed out by [u/yuri-kilochek on Reddit](https://www.reddit.com/user/yuri-kilochek), this container is technically a "pseudo-container" for class types. 
+Since class objects are stored in a decomposed (field-wise) form, direct references (`T&`) cannot be exposed. 
+For primitive types, normal container-like behavior is supported, but for class types, every access involves copying the object.
 
 ---
 
