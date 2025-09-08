@@ -38,6 +38,10 @@ For primitive types, normal container-like behavior is supported, but for class 
   - [ ] Test SoA behavior for class types
 - [ ] Optional: Set up a CI/CD pipeline for automatic builds and tests
 - [ ] Improve documentation with examples and usage notes
+- [ ] Experimental / next steps (suggested by [u/yuri-kilochek](https://www.reddit.com/user/yuri-kilochek/)):
+  - [ ] Research C++ reflection and proxy types for field-level access
+  - [ ] Try some experiments on a side branch to explore alternative designs
+  - [ ] Explore fully data-oriented design (SoA structs) as suggested by community
 
 ---
 
