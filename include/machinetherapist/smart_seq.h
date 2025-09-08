@@ -33,24 +33,11 @@ class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
   storage_variant<T> _data;
   size_t _count = 0;
 
-  auto &get_storage() {
-    return std::visit([](auto &storage) -> auto & { return storage; }, _data);
+  auto &get_storage() noexcept {
+    return std::visit([](auto &s) -> auto & { return s; }, _data);
   }
-
-  const auto &get_storage() const {
-    return std::visit(
-        [](const auto &storage) -> const auto & { return storage; }, _data);
-  }
-
-public:
-  smart_seq() {
-    if constexpr (std::is_same_v<storage_type_t<T>,
-                                 std::array<T, sso_threshold>>)
-      _data = std::array<T, sso_threshold>{};
-    else {
-      _data = std::vector<T>{};
-      std::get<std::vector<T>>(_data).reserve(sso_threshold);
-    }
+  auto const &get_storage() const noexcept {
+    return std::visit([](auto const &s) -> auto const & { return s; }, _data);
   }
 
   template <typename Storage, typename U>
@@ -65,6 +52,29 @@ public:
     }
   }
 
+  template <typename Storage, typename... Args>
+  void emplace_to_storage(Storage &storage, Args &&...args) {
+    if (_count < sso_threshold)
+      storage[_count++] = T(std::forward<Args>(args)...);
+    else {
+      std::vector<T> vec(storage.begin(), storage.end());
+      vec.emplace_back(std::forward<Args>(args)...);
+      _data = std::move(vec);
+      _count = std::get<std::vector<T>>(_data).size();
+    }
+  }
+
+public:
+  smart_seq() {
+    if constexpr (std::is_same_v<storage_type_t<T>,
+                                 std::array<T, sso_threshold>>)
+      _data = std::array<T, sso_threshold>{};
+    else {
+      _data = std::vector<T>{};
+      std::get<std::vector<T>>(_data).reserve(sso_threshold);
+    }
+  }
+
   template <typename U> void push_back(U &&v) {
     if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
       push_to_storage(*arr, std::forward<U>(v));
@@ -75,39 +85,58 @@ public:
     }
   }
 
-  size_t size() const { return _count; }
-
-  T &operator[](size_t i) {
-    return std::visit([i](auto &storage) -> T & { return storage[i]; }, _data);
+  template <typename... Args> void emplace_back(Args &&...args) {
+    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+      emplace_to_storage(*arr, std::forward<Args>(args)...);
+    else {
+      auto &vec = std::get<std::vector<T>>(_data);
+      vec.emplace_back(std::forward<Args>(args)...);
+      _count = vec.size();
+    }
   }
 
-  const T &operator[](size_t i) const {
-    return std::visit(
-        [i](const auto &storage) -> const T & { return storage[i]; }, _data);
+  [[nodiscard]] auto size() const noexcept -> size_t { return _count; }
+
+  auto operator[](size_t i) noexcept -> T & {
+    return std::visit([i](auto &s) -> T & { return s[i]; }, _data);
+  }
+  auto operator[](size_t i) const noexcept -> T const & {
+    return std::visit([i](auto const &s) -> T const & { return s[i]; }, _data);
   }
 
-  operator std::span<T>() & {
+  [[nodiscard]] auto at(size_t i) -> T & {
+    if (i >= _count)
+      throw std::out_of_range("smart_seq index out of range");
+    return (*this)[i];
+  }
+  [[nodiscard]] auto at(size_t i) const -> T const & {
+    if (i >= _count)
+      throw std::out_of_range("smart_seq index out of range");
+    return (*this)[i];
+  }
+
+  operator std::span<T>() & noexcept {
     return std::visit(
-        [this](auto &storage) -> std::span<T> {
-          using StorageType = std::decay_t<decltype(storage)>;
+        [this](auto &s) -> std::span<T> {
+          using StorageType = std::decay_t<decltype(s)>;
           if constexpr (std::is_same_v<StorageType,
                                        std::array<T, sso_threshold>>)
-            return std::span<T>(storage.data(), _count);
+            return std::span<T>(s.data(), _count);
           else
-            return std::span<T>(storage.data(), storage.size());
+            return std::span<T>(s.data(), s.size());
         },
         _data);
   }
 
-  operator std::span<const T>() const & {
+  operator std::span<T const>() const & noexcept {
     return std::visit(
-        [this](const auto &storage) -> std::span<const T> {
-          using StorageType = std::decay_t<decltype(storage)>;
+        [this](auto const &s) -> std::span<T const> {
+          using StorageType = std::decay_t<decltype(s)>;
           if constexpr (std::is_same_v<StorageType,
                                        std::array<T, sso_threshold>>)
-            return std::span<const T>(storage.data(), _count);
+            return std::span<T const>(s.data(), _count);
           else
-            return std::span<const T>(storage.data(), storage.size());
+            return std::span<T const>(s.data(), s.size());
         },
         _data);
   }
@@ -130,37 +159,38 @@ template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
   data_tuple_t _data;
   size_t _count = 0;
 
-  template <size_t I> auto &get_storage() { return std::get<I>(_data); }
-
-  template <size_t I> const auto &get_storage() const {
+  template <size_t I> auto &get_storage() noexcept {
     return std::get<I>(_data);
   }
 
-  template <size_t I> void push_to_storage(const field_type<I> &value) {
-    auto &storage = get_storage<I>();
+  template <size_t I> auto const &get_storage() const noexcept {
+    return std::get<I>(_data);
+  }
 
+  template <size_t I, typename U> void push_to_storage(U &&value) {
+    auto &storage = get_storage<I>();
     if (std::holds_alternative<std::array<field_type<I>, sso_threshold>>(
             storage)) {
       auto &array_storage =
           std::get<std::array<field_type<I>, sso_threshold>>(storage);
       if (_count < sso_threshold)
-        array_storage[_count] = value;
+        array_storage[_count] = std::forward<U>(value);
       else {
         std::vector<field_type<I>> vec(array_storage.begin(),
                                        array_storage.end());
-        vec.push_back(value);
+        vec.push_back(std::forward<U>(value));
         storage = std::move(vec);
       }
     } else {
       auto &vector_storage = std::get<std::vector<field_type<I>>>(storage);
-      vector_storage.push_back(value);
+      vector_storage.push_back(std::forward<U>(value));
     }
   }
 
 public:
   smart_seq() {
     [this]<size_t... I>(std::index_sequence<I...>) {
-      (([this]() {
+      (([this] {
          using FieldType = field_type<I>;
          if constexpr (std::is_class_v<FieldType> ||
                        !(sizeof(FieldType) <= sizeof(void *) * sso_threshold)) {
@@ -168,7 +198,6 @@ public:
            if constexpr (!std::is_class_v<FieldType>)
              std::get<std::vector<FieldType>>(std::get<I>(_data))
                  .reserve(sso_threshold);
-
          } else
            std::get<I>(_data) = std::array<FieldType, sso_threshold>{};
        }()),
@@ -176,37 +205,47 @@ public:
     }(std::make_index_sequence<_n>{});
   }
 
-  void push_back(const T &obj) {
+  void push_back(T const &obj) {
     [this, &obj]<size_t... I>(std::index_sequence<I...>) {
-      (([this, &obj] { push_to_storage<I>(boost::pfr::get<I>(obj)); }()), ...);
+      ((push_to_storage<I>(boost::pfr::get<I>(obj))), ...);
     }(std::make_index_sequence<_n>{});
     _count++;
   }
 
-  size_t size() const { return _count; }
+  template <typename... Args> void emplace_back(Args &&...args) {
+    push_back(T(std::forward<Args>(args)...));
+  }
 
-  T operator[](size_t index) const {
+  [[nodiscard]] auto size() const noexcept -> size_t { return _count; }
+
+  [[nodiscard]] auto operator[](size_t index) const -> T {
     T result;
     [this, index, &result]<size_t... I>(std::index_sequence<I...>) {
-      (([this, index, &result] {
-         const auto &storage = get_storage<I>();
-         std::visit(
-             [index, &result](const auto &stor) {
-               boost::pfr::get<I>(result) = stor[index];
-             },
-             storage);
-       }()),
+      ((std::visit(
+           [index, &result](auto const &stor) {
+             boost::pfr::get<I>(result) = stor[index];
+           },
+           get_storage<I>())),
        ...);
     }(std::make_index_sequence<_n>{});
     return result;
   }
 
-  template <size_t I> auto &field() { return get_storage<I>(); }
+  [[nodiscard]] auto at(size_t index) const -> T {
+    if (index >= _count)
+      throw std::out_of_range("smart_seq index out of range");
+    return (*this)[index];
+  }
 
-  template <size_t I> const auto &field() const { return get_storage<I>(); }
+  template <size_t I> auto &field() noexcept { return get_storage<I>(); }
+
+  template <size_t I> auto const &field() const noexcept {
+    return get_storage<I>();
+  }
 };
 
-template <typename T, typename... Args> auto make_smart_seq(Args &&...args) {
+template <typename T, typename... Args>
+auto make_smart_seq(Args &&...) -> smart_seq<T> {
   return smart_seq<T>();
 }
 
