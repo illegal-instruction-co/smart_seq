@@ -69,7 +69,7 @@ class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
   }
 
 public:
-  smart_seq() {
+  constexpr smart_seq() {
     if constexpr (std::is_same_v<storage_type_t<T>,
                                  std::array<T, sso_threshold>>)
       _data = std::array<T, sso_threshold>{};
@@ -104,12 +104,29 @@ public:
     }
   }
 
-  [[nodiscard]] auto size() const noexcept -> size_t { return _count; }
+  [[nodiscard]] constexpr auto size() const noexcept -> size_t {
+    return _count;
+  }
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool {
+    return _count == 0;
+  }
 
-  auto operator[](size_t i) noexcept -> T & {
+  void pop_back() {
+    if (_count == 0)
+      return;
+    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+      --_count;
+    else {
+      auto &vec = std::get<std::vector<T>>(_data);
+      vec.pop_back();
+      _count = vec.size();
+    }
+  }
+
+  auto &operator[](size_t i) noexcept {
     return std::visit([i](auto &s) -> T & { return s[i]; }, _data);
   }
-  auto operator[](size_t i) const noexcept -> T const & {
+  auto const &operator[](size_t i) const noexcept {
     return std::visit([i](auto const &s) -> T const & { return s[i]; }, _data);
   }
 
@@ -171,7 +188,6 @@ template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
   template <size_t I> auto &get_storage() noexcept {
     return std::get<I>(_data);
   }
-
   template <size_t I> auto const &get_storage() const noexcept {
     return std::get<I>(_data);
   }
@@ -198,7 +214,7 @@ template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
   }
 
 public:
-  smart_seq() {
+  constexpr smart_seq() {
     [this]<size_t... I>(std::index_sequence<I...>) {
       (([this] {
          using FieldType = field_type<I>;
@@ -231,7 +247,24 @@ public:
     push_back(T(std::forward<Args>(args)...));
   }
 
-  [[nodiscard]] auto size() const noexcept -> size_t { return _count; }
+  [[nodiscard]] constexpr auto size() const noexcept -> size_t {
+    return _count;
+  }
+  [[nodiscard]] constexpr auto empty() const noexcept -> bool {
+    return _count == 0;
+  }
+
+  void pop_back() {
+    if (_count == 0)
+      return;
+    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+      --_count;
+    else {
+      auto &vec = std::get<std::vector<T>>(_data);
+      vec.pop_back();
+      _count = vec.size();
+    }
+  }
 
   [[nodiscard]] auto operator[](size_t index) const -> T {
     T result;
@@ -252,15 +285,31 @@ public:
     return (*this)[index];
   }
 
-  template <size_t I> auto &field() noexcept { return get_storage<I>(); }
+  template <size_t I>
+  [[nodiscard]] auto field() noexcept -> std::span<field_type<I>> {
+    auto &storage = get_storage<I>();
+    if (auto *arr =
+            std::get_if<std::array<field_type<I>, sso_threshold>>(&storage))
+      return std::span<field_type<I>>(arr->data(), _count);
+    else
+      return std::span<field_type<I>>(
+          std::get<std::vector<field_type<I>>>(storage).data(), _count);
+  }
 
-  template <size_t I> auto const &field() const noexcept {
-    return get_storage<I>();
+  template <size_t I>
+  [[nodiscard]] auto field() const noexcept -> std::span<field_type<I> const> {
+    auto const &storage = get_storage<I>();
+    if (auto const *arr =
+            std::get_if<std::array<field_type<I>, sso_threshold>>(&storage))
+      return std::span<field_type<I> const>(arr->data(), _count);
+    else
+      return std::span<field_type<I> const>(
+          std::get<std::vector<field_type<I>>>(storage).data(), _count);
   }
 };
 
 template <typename T, typename... Args>
-auto make_smart_seq(Args &&...) -> smart_seq<T> {
+[[nodiscard]] constexpr auto make_smart_seq(Args &&...) -> smart_seq<T> {
   return smart_seq<T>();
 }
 

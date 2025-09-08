@@ -60,34 +60,25 @@ void soa_test() {
   smart_seq<Particle> particles;
   const int count = 5;
 
-  for (int i = 0; i < count; i++) {
+  for (int i = 0; i < count; i++)
     particles.push_back(Particle{Vec3{1.0f * i, 2.0f * i, 3.0f * i}, i});
-  }
 
   cout << "Particles size: " << particles.size() << endl;
 
   float sum = 0;
 
-  auto &pos_storage = particles.field<0>();
-  auto &id_storage = particles.field<1>();
+  auto pos_storage = particles.field<0>();
+  auto id_storage = particles.field<1>();
 
-  std::visit(
-      [&sum, &particles](const auto &positions) {
-        for (size_t i = 0; i < particles.size(); i++) {
-          sum += positions[i].x + positions[i].y + positions[i].z;
-          cout << "Particle " << i << ": pos(" << positions[i].x << ", "
-               << positions[i].y << ", " << positions[i].z << ")" << endl;
-        }
-      },
-      pos_storage);
+  for (size_t i = 0; i < particles.size(); i++) {
+    sum += pos_storage[i].x + pos_storage[i].y + pos_storage[i].z;
+    cout << "Particle " << i << ": pos(" << pos_storage[i].x << ", "
+         << pos_storage[i].y << ", " << pos_storage[i].z << ")" << endl;
+  }
 
-  std::visit(
-      [&particles](const auto &ids) {
-        for (size_t i = 0; i < particles.size(); i++) {
-          cout << "Particle " << i << ": id(" << ids[i] << ")" << endl;
-        }
-      },
-      id_storage);
+  for (size_t i = 0; i < particles.size(); i++) {
+    cout << "Particle " << i << ": id(" << id_storage[i] << ")" << endl;
+  }
 
   cout << "Smart_seq SoA sum: " << sum << " (count: " << particles.size() << ")"
        << endl;
