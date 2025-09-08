@@ -33,9 +33,6 @@ For primitive types, normal container-like behavior is supported, but for class 
   - [ ] Add `install()` and `find_package()` support
   - [ ] Make it easier to include this library in other projects
 - [ ] Add unit tests using Google Test or Catch2 (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
-  - [ ] Test `push_back`, `operator[]`, and `span` functionality
-  - [ ] Test SSO → vector transition for small types
-  - [ ] Test SoA behavior for class types
 - [ ] Optional: Set up a CI/CD pipeline for automatic builds and tests
 - [ ] Improve documentation with examples and usage notes
 - [ ] Experimental / next steps (suggested by [u/yuri-kilochek](https://www.reddit.com/user/yuri-kilochek/)):
@@ -43,9 +40,9 @@ For primitive types, normal container-like behavior is supported, but for class 
   - [ ] Try some experiments on a side branch to explore alternative designs
   - [ ] Explore fully data-oriented design (SoA structs) as suggested by community
   - [ ] Explore optimal field ordering for cache-friendly layout and micro-optimizations
-  - [ ] Add proper exception safety guarantees (suggested by [u/masscry](https://www.reddit.com/user/masscry/)):
-    - [ ] Ensure strong/ basic exception safety for `push_back` and storage transitions
-    - [ ] Handle copy/move/assignment safely without leaks
+  - [x] Add proper exception safety guarantees (suggested by [u/masscry](https://www.reddit.com/user/masscry/)):
+    - [x] Ensure strong/ basic exception safety for `push_back` and storage transitions
+    - [x] Handle copy/move/assignment safely without leaks
 
 ---
 

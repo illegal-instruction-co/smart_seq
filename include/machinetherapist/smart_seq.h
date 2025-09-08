@@ -45,10 +45,12 @@ class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
     if (_count < sso_threshold)
       storage[_count++] = std::forward<U>(v);
     else {
-      std::vector<T> vec(storage.begin(), storage.end());
+      std::vector<T> vec;
+      vec.reserve(_count + 1);
+      vec.insert(vec.end(), storage.begin(), storage.end());
       vec.push_back(std::forward<U>(v));
       _data = std::move(vec);
-      _count = std::get<std::vector<T>>(_data).size();
+      _count++;
     }
   }
 
@@ -57,10 +59,12 @@ class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
     if (_count < sso_threshold)
       storage[_count++] = T(std::forward<Args>(args)...);
     else {
-      std::vector<T> vec(storage.begin(), storage.end());
+      std::vector<T> vec;
+      vec.reserve(_count + 1);
+      vec.insert(vec.end(), storage.begin(), storage.end());
       vec.emplace_back(std::forward<Args>(args)...);
       _data = std::move(vec);
-      _count = std::get<std::vector<T>>(_data).size();
+      _count++;
     }
   }
 
@@ -74,6 +78,11 @@ public:
       std::get<std::vector<T>>(_data).reserve(sso_threshold);
     }
   }
+
+  smart_seq(const smart_seq &) = default;
+  smart_seq(smart_seq &&) noexcept = default;
+  smart_seq &operator=(const smart_seq &) = default;
+  smart_seq &operator=(smart_seq &&) noexcept = default;
 
   template <typename U> void push_back(U &&v) {
     if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
@@ -176,8 +185,9 @@ template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
       if (_count < sso_threshold)
         array_storage[_count] = std::forward<U>(value);
       else {
-        std::vector<field_type<I>> vec(array_storage.begin(),
-                                       array_storage.end());
+        std::vector<field_type<I>> vec;
+        vec.reserve(_count + 1);
+        vec.insert(vec.end(), array_storage.begin(), array_storage.end());
         vec.push_back(std::forward<U>(value));
         storage = std::move(vec);
       }
@@ -204,6 +214,11 @@ public:
        ...);
     }(std::make_index_sequence<_n>{});
   }
+
+  smart_seq(const smart_seq &) = default;
+  smart_seq(smart_seq &&) noexcept = default;
+  smart_seq &operator=(const smart_seq &) = default;
+  smart_seq &operator=(smart_seq &&) noexcept = default;
 
   void push_back(T const &obj) {
     [this, &obj]<size_t... I>(std::index_sequence<I...>) {
