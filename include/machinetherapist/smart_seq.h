@@ -33,13 +33,6 @@ class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
   storage_variant<T> _data;
   size_t _count = 0;
 
-  auto &get_storage() noexcept {
-    return std::visit([](auto &s) -> auto & { return s; }, _data);
-  }
-  auto const &get_storage() const noexcept {
-    return std::visit([](auto const &s) -> auto const & { return s; }, _data);
-  }
-
   template <typename Storage, typename U>
   void push_to_storage(Storage &storage, U &&v) {
     if (_count < sso_threshold)
@@ -85,20 +78,20 @@ public:
   smart_seq &operator=(smart_seq &&) noexcept = default;
 
   template <typename U> void push_back(U &&v) {
-    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+    if (auto *arr = std::get_if<0>(&_data))
       push_to_storage(*arr, std::forward<U>(v));
     else {
-      auto &vec = std::get<std::vector<T>>(_data);
+      auto &vec = std::get<1>(_data);
       vec.push_back(std::forward<U>(v));
       _count = vec.size();
     }
   }
 
   template <typename... Args> void emplace_back(Args &&...args) {
-    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+    if (auto *arr = std::get_if<0>(&_data))
       emplace_to_storage(*arr, std::forward<Args>(args)...);
     else {
-      auto &vec = std::get<std::vector<T>>(_data);
+      auto &vec = std::get<1>(_data);
       vec.emplace_back(std::forward<Args>(args)...);
       _count = vec.size();
     }
@@ -114,10 +107,10 @@ public:
   void pop_back() {
     if (_count == 0)
       return;
-    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+    if (auto *arr = std::get_if<0>(&_data))
       --_count;
     else {
-      auto &vec = std::get<std::vector<T>>(_data);
+      auto &vec = std::get<1>(_data);
       vec.pop_back();
       _count = vec.size();
     }
@@ -192,28 +185,48 @@ template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
     return std::get<I>(_data);
   }
 
-  template <size_t I, typename U> void push_to_storage(U &&value) {
-    auto &storage = get_storage<I>();
-    if (std::holds_alternative<std::array<field_type<I>, sso_threshold>>(
-            storage)) {
-      auto &array_storage =
-          std::get<std::array<field_type<I>, sso_threshold>>(storage);
-      if (_count < sso_threshold)
-        array_storage[_count] = std::forward<U>(value);
-      else {
-        std::vector<field_type<I>> vec;
-        vec.reserve(_count + 1);
-        vec.insert(vec.end(), array_storage.begin(), array_storage.end());
-        vec.push_back(std::forward<U>(value));
-        storage = std::move(vec);
-      }
+  template <size_t I, typename Variant>
+  auto get_field_storage(Variant &variant_storage,
+                         size_t index) -> field_type<I> * {
+    if (auto *arr = std::get_if<0>(&variant_storage)) {
+      return &(*arr)[index];
     } else {
-      auto &vector_storage = std::get<std::vector<field_type<I>>>(storage);
-      vector_storage.push_back(std::forward<U>(value));
+      auto &vec = std::get<1>(variant_storage);
+      return &vec[index];
+    }
+  }
+
+  template <size_t I, typename Variant>
+  void push_to_field_storage(Variant &variant_storage,
+                             const field_type<I> &value) {
+    if (auto *arr = std::get_if<0>(&variant_storage)) {
+      (*arr)[_count] = value;
+    } else {
+      auto &vec = std::get<1>(variant_storage);
+      vec.push_back(value);
     }
   }
 
 public:
+  template <size_t... Is> struct ProxyImpl {
+    std::tuple<field_type<Is> *...> pointers;
+
+    ProxyImpl(field_type<Is> *...ptrs) : pointers{ptrs...} {}
+
+    template <size_t I> field_type<I> &get() { return *std::get<I>(pointers); }
+
+    auto &pos() { return *std::get<0>(pointers); }
+    auto &id() { return *std::get<1>(pointers); }
+  };
+
+  template <typename Seq> struct make_proxy_from_seq;
+  template <size_t... Is>
+  struct make_proxy_from_seq<std::index_sequence<Is...>> {
+    using type = ProxyImpl<Is...>;
+  };
+  using Proxy =
+      typename make_proxy_from_seq<std::make_index_sequence<_n>>::type;
+
   constexpr smart_seq() {
     [this]<size_t... I>(std::index_sequence<I...>) {
       (([this] {
@@ -221,11 +234,10 @@ public:
          if constexpr (std::is_class_v<FieldType> ||
                        !(sizeof(FieldType) <= sizeof(void *) * sso_threshold)) {
            std::get<I>(_data) = std::vector<FieldType>{};
-           if constexpr (!std::is_class_v<FieldType>)
-             std::get<std::vector<FieldType>>(std::get<I>(_data))
-                 .reserve(sso_threshold);
-         } else
+           std::get<1>(std::get<I>(_data)).reserve(sso_threshold);
+         } else {
            std::get<I>(_data) = std::array<FieldType, sso_threshold>{};
+         }
        }()),
        ...);
     }(std::make_index_sequence<_n>{});
@@ -238,7 +250,8 @@ public:
 
   void push_back(T const &obj) {
     [this, &obj]<size_t... I>(std::index_sequence<I...>) {
-      ((push_to_storage<I>(boost::pfr::get<I>(obj))), ...);
+      ((push_to_field_storage<I>(std::get<I>(_data), boost::pfr::get<I>(obj))),
+       ...);
     }(std::make_index_sequence<_n>{});
     _count++;
   }
@@ -254,57 +267,28 @@ public:
     return _count == 0;
   }
 
-  void pop_back() {
-    if (_count == 0)
-      return;
-    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
-      --_count;
-    else {
-      auto &vec = std::get<std::vector<T>>(_data);
-      vec.pop_back();
-      _count = vec.size();
-    }
-  }
-
-  [[nodiscard]] auto operator[](size_t index) const -> T {
-    T result;
-    [this, index, &result]<size_t... I>(std::index_sequence<I...>) {
-      ((std::visit(
-           [index, &result](auto const &stor) {
-             boost::pfr::get<I>(result) = stor[index];
-           },
-           get_storage<I>())),
-       ...);
+  Proxy get_ref(size_t index) {
+    return [this, index]<size_t... I>(std::index_sequence<I...>) {
+      return Proxy(get_field_storage<I>(std::get<I>(_data), index)...);
     }(std::make_index_sequence<_n>{});
-    return result;
   }
 
-  [[nodiscard]] auto at(size_t index) const -> T {
-    if (index >= _count)
-      throw std::out_of_range("smart_seq index out of range");
-    return (*this)[index];
-  }
-
-  template <size_t I>
-  [[nodiscard]] auto field() noexcept -> std::span<field_type<I>> {
+  template <size_t I> auto field() noexcept -> std::span<field_type<I>> {
     auto &storage = get_storage<I>();
-    if (auto *arr =
-            std::get_if<std::array<field_type<I>, sso_threshold>>(&storage))
+    if (auto *arr = std::get_if<0>(&storage))
       return std::span<field_type<I>>(arr->data(), _count);
     else
-      return std::span<field_type<I>>(
-          std::get<std::vector<field_type<I>>>(storage).data(), _count);
+      return std::span<field_type<I>>(std::get<1>(storage).data(), _count);
   }
 
   template <size_t I>
-  [[nodiscard]] auto field() const noexcept -> std::span<field_type<I> const> {
+  auto field() const noexcept -> std::span<field_type<I> const> {
     auto const &storage = get_storage<I>();
-    if (auto const *arr =
-            std::get_if<std::array<field_type<I>, sso_threshold>>(&storage))
+    if (auto const *arr = std::get_if<0>(&storage))
       return std::span<field_type<I> const>(arr->data(), _count);
     else
-      return std::span<field_type<I> const>(
-          std::get<std::vector<field_type<I>>>(storage).data(), _count);
+      return std::span<field_type<I> const>(std::get<1>(storage).data(),
+                                            _count);
   }
 };
 

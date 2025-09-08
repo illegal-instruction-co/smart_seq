@@ -85,9 +85,9 @@ void soa_test() {
 
   cout << "\nOperator[] test:" << endl;
   for (size_t i = 0; i < particles.size(); i++) {
-    Particle p = particles[i];
-    cout << "Particle " << i << ": pos(" << p.pos.x << ", " << p.pos.y << ", "
-         << p.pos.z << "), id(" << p.id << ")" << endl;
+    auto p = particles.get_ref(i);
+    cout << "Particle " << i << ": pos(" << p.pos().x << ", " << p.pos().y
+         << ", " << p.pos().z << "), id(" << p.id() << ")" << endl;
   }
 }
 
