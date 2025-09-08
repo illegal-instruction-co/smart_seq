@@ -1,4 +1,4 @@
-# smart_seq - A Smart Sequence Container 🚀
+# smart_seq - A Smart Sequence 'Pseudo' Container 
 
 Hello! This code is a special data structure written in modern C++. It's designed to be **faster than a standard `std::vector`** for many common use cases.
 
@@ -15,6 +15,37 @@ This code aims to fill that gap.
 - **Super Fast for Small Data:** For a few elements, it avoids using the heap entirely, just like a small string optimization. This makes common operations like `push_back` much faster by eliminating memory allocation overhead.
 - **Smart for Large Data:** For more complex data types (like structs), it automatically reorganizes your data into a **Structure of Arrays (SoA)** format. This improves **cache locality**, allowing your CPU to process data much more efficiently and speeding up your program.
 - **Automatic:** You don't need to write complex boilerplate code. Just add your data, and it handles the best memory layout for you.
+
+---
+
+### Why ‘Pseudo’?
+
+As pointed out by [u/yuri-kilochek on Reddit](https://www.reddit.com/user/yuri-kilochek), this container is technically a "pseudo-container" for class types. 
+Since class objects are stored in a decomposed (field-wise) form, direct references (`T&`) cannot be exposed. 
+For primitive types, normal container-like behavior is supported, but for class types, every access involves copying the object.
+
+---
+
+### TODO
+
+- [ ] Add a proper license (e.g., Apache 2.0 or MIT)
+- [ ] Improve CMake (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
+  - [ ] Add `install()` and `find_package()` support
+  - [ ] Make it easier to include this library in other projects
+- [ ] Add unit tests using Google Test or Catch2 (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
+  - [ ] Test `push_back`, `operator[]`, and `span` functionality
+  - [ ] Test SSO → vector transition for small types
+  - [ ] Test SoA behavior for class types
+- [ ] Optional: Set up a CI/CD pipeline for automatic builds and tests
+- [ ] Improve documentation with examples and usage notes
+- [ ] Experimental / next steps (suggested by [u/yuri-kilochek](https://www.reddit.com/user/yuri-kilochek/)):
+  - [ ] Research C++ reflection and proxy types for field-level access
+  - [ ] Try some experiments on a side branch to explore alternative designs
+  - [ ] Explore fully data-oriented design (SoA structs) as suggested by community
+  - [ ] Explore optimal field ordering for cache-friendly layout and micro-optimizations
+  - [ ] Add proper exception safety guarantees (suggested by [u/masscry](https://www.reddit.com/user/masscry/)):
+    - [ ] Ensure strong/ basic exception safety for `push_back` and storage transitions
+    - [ ] Handle copy/move/assignment safely without leaks
 
 ---
 
