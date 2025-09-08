@@ -107,13 +107,10 @@ public:
   void pop_back() {
     if (_count == 0)
       return;
-    if (auto *arr = std::get_if<0>(&_data))
-      --_count;
-    else {
-      auto &vec = std::get<1>(_data);
-      vec.pop_back();
-      _count = vec.size();
-    }
+
+    auto &vec = std::get<1>(_data);
+    vec.pop_back();
+    _count = vec.size();
   }
 
   auto &operator[](size_t i) noexcept {
@@ -254,6 +251,13 @@ public:
        ...);
     }(std::make_index_sequence<_n>{});
     _count++;
+  }
+
+  void pop_back() {
+    if (_count == 0)
+      return;
+
+    --_count;
   }
 
   template <typename... Args> void emplace_back(Args &&...args) {
