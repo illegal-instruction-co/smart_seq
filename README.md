@@ -43,6 +43,9 @@ For primitive types, normal container-like behavior is supported, but for class 
   - [ ] Try some experiments on a side branch to explore alternative designs
   - [ ] Explore fully data-oriented design (SoA structs) as suggested by community
   - [ ] Explore optimal field ordering for cache-friendly layout and micro-optimizations
+  - [ ] Add proper exception safety guarantees (suggested by [u/masscry](https://www.reddit.com/user/masscry/)):
+    - [ ] Ensure strong/ basic exception safety for `push_back` and storage transitions
+    - [ ] Handle copy/move/assignment safely without leaks
 
 ---
 
