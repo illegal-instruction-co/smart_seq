@@ -64,7 +64,7 @@ For primitive types, normal container-like behavior is supported, but for class 
 
 ### TODO
 
-- [ ] Add a proper license (e.g., Apache 2.0 or MIT)
+- [x] Add a proper license (e.g., Apache 2.0 or MIT)
 - [x] Improve CMake (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
   - [x] Add `install()` and `find_package()` support
   - [x] Make it easier to include this library in other projects
@@ -87,3 +87,7 @@ For primitive types, normal container-like behavior is supported, but for class 
 While this approach can be very useful, it might not always be the absolute best solution. It's important to be transparent that **I haven't yet conducted detailed benchmarks** to confirm these performance gains. The current implementation is based on theoretical principles. I believe these optimizations will prove valuable in practice, but I'd be grateful if others could contribute with more rigorous performance testing.
 
 I hope you find it useful!
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
