@@ -45,30 +45,33 @@ class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
 public:
   smart_seq() {
     if constexpr (std::is_same_v<storage_type_t<T>,
-                                 std::array<T, sso_threshold>>) {
+                                 std::array<T, sso_threshold>>)
       _data = std::array<T, sso_threshold>{};
-    } else {
+    else {
       _data = std::vector<T>{};
       std::get<std::vector<T>>(_data).reserve(sso_threshold);
     }
   }
 
-  void push_back(const T &v) {
-    if (std::holds_alternative<std::array<T, sso_threshold>>(_data)) {
-      auto &array_storage = std::get<std::array<T, sso_threshold>>(_data);
-      if (_count < sso_threshold) {
-        array_storage[_count] = v;
-        _count++;
-      } else {
-        std::vector<T> vec(array_storage.begin(), array_storage.end());
-        vec.push_back(v);
-        _data = std::move(vec);
-        _count = vec.size();
-      }
-    } else {
-      auto &vector_storage = std::get<std::vector<T>>(_data);
-      vector_storage.push_back(v);
-      _count = vector_storage.size();
+  template <typename Storage, typename U>
+  void push_to_storage(Storage &storage, U &&v) {
+    if (_count < sso_threshold)
+      storage[_count++] = std::forward<U>(v);
+    else {
+      std::vector<T> vec(storage.begin(), storage.end());
+      vec.push_back(std::forward<U>(v));
+      _data = std::move(vec);
+      _count = std::get<std::vector<T>>(_data).size();
+    }
+  }
+
+  template <typename U> void push_back(U &&v) {
+    if (auto *arr = std::get_if<std::array<T, sso_threshold>>(&_data))
+      push_to_storage(*arr, std::forward<U>(v));
+    else {
+      auto &vec = std::get<std::vector<T>>(_data);
+      vec.push_back(std::forward<U>(v));
+      _count = vec.size();
     }
   }
 
@@ -88,11 +91,10 @@ public:
         [this](auto &storage) -> std::span<T> {
           using StorageType = std::decay_t<decltype(storage)>;
           if constexpr (std::is_same_v<StorageType,
-                                       std::array<T, sso_threshold>>) {
+                                       std::array<T, sso_threshold>>)
             return std::span<T>(storage.data(), _count);
-          } else {
+          else
             return std::span<T>(storage.data(), storage.size());
-          }
         },
         _data);
   }
@@ -102,11 +104,10 @@ public:
         [this](const auto &storage) -> std::span<const T> {
           using StorageType = std::decay_t<decltype(storage)>;
           if constexpr (std::is_same_v<StorageType,
-                                       std::array<T, sso_threshold>>) {
+                                       std::array<T, sso_threshold>>)
             return std::span<const T>(storage.data(), _count);
-          } else {
+          else
             return std::span<const T>(storage.data(), storage.size());
-          }
         },
         _data);
   }
@@ -142,9 +143,9 @@ template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
             storage)) {
       auto &array_storage =
           std::get<std::array<field_type<I>, sso_threshold>>(storage);
-      if (_count < sso_threshold) {
+      if (_count < sso_threshold)
         array_storage[_count] = value;
-      } else {
+      else {
         std::vector<field_type<I>> vec(array_storage.begin(),
                                        array_storage.end());
         vec.push_back(value);
@@ -164,13 +165,12 @@ public:
          if constexpr (std::is_class_v<FieldType> ||
                        !(sizeof(FieldType) <= sizeof(void *) * sso_threshold)) {
            std::get<I>(_data) = std::vector<FieldType>{};
-           if constexpr (!std::is_class_v<FieldType>) {
+           if constexpr (!std::is_class_v<FieldType>)
              std::get<std::vector<FieldType>>(std::get<I>(_data))
                  .reserve(sso_threshold);
-           }
-         } else {
+
+         } else
            std::get<I>(_data) = std::array<FieldType, sso_threshold>{};
-         }
        }()),
        ...);
     }(std::make_index_sequence<_n>{});
