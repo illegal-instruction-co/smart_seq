@@ -26,6 +26,21 @@ For primitive types, normal container-like behavior is supported, but for class 
 
 ---
 
+### TODO
+
+- [ ] Add a proper license (e.g., Apache 2.0 or MIT)
+- [ ] Improve CMake (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
+  - [ ] Add `install()` and `find_package()` support
+  - [ ] Make it easier to include this library in other projects
+- [ ] Add unit tests using Google Test or Catch2 (suggested by [u/FlyingRhenquest](https://www.reddit.com/user/FlyingRhenquest/)):
+  - [ ] Test `push_back`, `operator[]`, and `span` functionality
+  - [ ] Test SSO → vector transition for small types
+  - [ ] Test SoA behavior for class types
+- [ ] Optional: Set up a CI/CD pipeline for automatic builds and tests
+- [ ] Improve documentation with examples and usage notes
+
+---
+
 ### A Note for the Future
 
 While this approach can be very useful, it might not always be the absolute best solution. It's important to be transparent that **I haven't yet conducted detailed benchmarks** to confirm these performance gains. The current implementation is based on theoretical principles. I believe these optimizations will prove valuable in practice, but I'd be grateful if others could contribute with more rigorous performance testing.
