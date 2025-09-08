@@ -29,7 +29,7 @@ using storage_variant =
     std::variant<std::array<T, sso_threshold>, std::vector<T>>;
 
 template <typename T>
-class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> {
+class smart_seq<T, std::enable_if_t<!std::is_class_v<T>>> final {
   storage_variant<T> _data;
   size_t _count = 0;
 
@@ -158,7 +158,8 @@ public:
   }
 };
 
-template <typename T> class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> {
+template <typename T>
+class smart_seq<T, std::enable_if_t<std::is_class_v<T>>> final {
   static constexpr size_t _n = boost::pfr::tuple_size_v<T>;
 
   template <size_t I>
