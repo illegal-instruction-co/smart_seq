@@ -42,6 +42,7 @@ For primitive types, normal container-like behavior is supported, but for class 
   - [ ] Research C++ reflection and proxy types for field-level access
   - [ ] Try some experiments on a side branch to explore alternative designs
   - [ ] Explore fully data-oriented design (SoA structs) as suggested by community
+  - [ ] Explore optimal field ordering for cache-friendly layout and micro-optimizations
 
 ---
 
